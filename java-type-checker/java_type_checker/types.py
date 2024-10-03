@@ -88,6 +88,8 @@ class JavaPrimitiveType(JavaType):
 
     Primitive types are not object types and do not have methods.
     """
+    def is_subtype_of(self, other):   # ← add this line to override the method
+        return self == other
 
 
 class JavaObjectType(JavaType):
@@ -105,6 +107,15 @@ class JavaObjectType(JavaType):
         constructor (JavaConstructor): Class’s constructor (we only allow one)
         methods (list of JavaMethod): Class's methods
     """
+    def is_subtype_of(self, other):   # ← add this line to override the method
+        # return JavaType
+        if (self == other):
+            return True
+        for i in self.direct_supertypes:
+            if (i.is_subtype_of(other)):
+                return True
+        return False
+        
 
     is_object_type = True
     is_instantiable = True
