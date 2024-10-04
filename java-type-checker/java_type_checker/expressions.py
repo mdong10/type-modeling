@@ -25,6 +25,7 @@ class JavaExpression(object):
 
         Subclasses must override this method.
         """
+    
         raise NotImplementedError(type(self).__name__ + " must override check_types()")
 
 
@@ -41,6 +42,9 @@ class JavaVariable(JavaExpression):
 
     def static_type(self):
         return self.declared_type
+    
+    def check_types(self):
+        return 
 
 
 class JavaLiteral(JavaExpression):
@@ -52,6 +56,9 @@ class JavaLiteral(JavaExpression):
 
     def static_type(self):
         return self.type
+    
+    def check_types(self):
+        return 
 
 
 class JavaNullLiteral(JavaLiteral):
@@ -75,6 +82,21 @@ class JavaAssignment(JavaExpression):
 
     def static_type(self):
         return self.lhs.static_type()
+    
+    def check_types(self):
+        self.lhs.check_types()
+        self.rhs.check_types()
+
+        if self.rhs.static_type().is_subtype_of(self.lhs.static_type()):
+            return
+        else:
+            raise JavaTypeMismatchError(
+                "Cannot assign {2} to variable {0} of type {1}".format(
+                    self.lhs.name,
+                    self.lhs.static_type().name,
+                    self.rhs.static_type().name)
+            )
+        
 
 
 class JavaMethodCall(JavaExpression):
@@ -99,7 +121,34 @@ class JavaMethodCall(JavaExpression):
         self.args = args
 
     def static_type(self):
-        return 
+        return self.receiver.static_type().method_named(self.method_name).return_type
+
+    def check_types(self):
+        self.receiver.check_types()
+
+        for arg in self.args:
+            arg.check_types()
+            
+        if (len(self.receiver.static_type().method_named(self.method_name).parameter_types) != len(self.args)):
+            raise JavaArgumentCountError(
+                "Wrong number of arguments for {0}: expected {1}, got {2}".format(
+                self.receiver.static_type().name + "." + self.method_name + "()",
+                len(self.receiver.static_type().method_named(self.method_name).parameter_types),
+                len(self.args)))
+        else:
+            for (arg, type) in zip(self.args, self.receiver.static_type().method_named(self.method_name).parameter_types ):
+                if (arg.static_type().is_subtype_of(type)):
+                    pass
+                else:
+                    raise JavaTypeMismatchError(
+                        "{0} expects arguments of type {1}, but got {2}".format(
+                            self.receiver.static_type().name + "." + self.method_name + "()",
+                            _names((self.receiver.static_type().method_named(self.method_name).parameter_types)),
+                            _names([arg.static_type() for arg in self.args])
+                        )
+                    )
+            return
+        
         
 
 
@@ -130,6 +179,7 @@ class JavaTypeMismatchError(JavaTypeError):
     """Indicates that one or more expressions do not evaluate to the correct type.
     """
     pass
+    
 
 
 class JavaArgumentCountError(JavaTypeError):
